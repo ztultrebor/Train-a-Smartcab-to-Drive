@@ -26,10 +26,41 @@ class StochasticAgent(Agent):
         inputs = self.env.sense(self)
         deadline = self.env.get_deadline(self)
         # Execute random action and get reward
-        action = (None, 'forward', 'right', 'left')[random.randrange(4)]
+        action = self.env.valid_actions[random.randrange(4)]
         reward = self.env.act(self, action)
         print "LearningAgent.update():deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
+#==============================================================================
+
+class DimAwarenessAgent(Agent):
+    """
+    An agent is aware of the state its in, but is not able to reason and plan
+    based upon this knowledge.
+    """
+
+    def __init__(self, env):
+        super(DimAwarenessAgent, self).__init__(env)  # sets self.env = env, state = None, next_waypoint = None, and a default color
+        self.color = 'black'  # override color
+        self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
+        # TODO: Initialize any additional variables here
+
+    def reset(self, destination=None):
+        self.planner.route_to(destination)
+        # TODO: Prepare for a new trip; reset any variables here, if required
+
+    def update(self, t):
+        # Gather inputs
+        self.next_waypoint = self.planner.next_waypoint()  # from route planner, also displayed by simulator
+        inputs = self.env.sense(self)
+        deadline = self.env.get_deadline(self)
+        self.state = [inputs['light'], inputs['oncoming'], inputs['left'], self.next_waypoint, deadline]
+        action = self.env.valid_actions[random.randrange(4)]
+        # Execute action and get reward
+        reward = self.env.act(self, action)
+
+        # TODO: Learn policy based on state, action, reward
+
+        print "LearningAgent.update():deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
 class LearningAgent(Agent):
     """An agent that learns to drive in the smartcab world."""
@@ -77,6 +108,6 @@ def run(agent, enforce, delay):
     sim.run(n_trials=10)  # press Esc or close pygame window to quit
 
 
-
 if __name__ == '__main__':
     run(StochasticAgent, enforce=False, delay=0.2)
+    run(DimAwarenessAgent, enforce=False, delay=1)
