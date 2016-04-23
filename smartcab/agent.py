@@ -34,8 +34,8 @@ class StochasticAgent(Agent):
 
 class DimAwarenessAgent(StochasticAgent):
     """
-    An agent is aware of the state its in, but is not able to reason and plan
-    based upon this knowledge. Satisfies the second part of the assignment.
+    An agent that is aware of the state its in, but is not able to reason and
+    plan based upon this knowledge. Satisfies the second part of the assignment.
     """
 
     def __init__(self, env):
@@ -55,38 +55,41 @@ class DimAwarenessAgent(StochasticAgent):
 #==============================================================================
 
 class QLearningAgent(StochasticAgent):
-    """An agent that learns to drive in the smartcab world."""
+    """
+    An agent that attempts to learn what actions are best under various circumstances. Satisfies the third part of the assignment.
+    """
 
     def __init__(self, env):
         super(QLearningAgent, self).__init__(env)  # sets self.env = env, state = None, next_waypoint = None, and a default color
         self.states = [ (light, oncoming, left, waypt)
                 for light in ('red', 'green')
-                for oncoming in ('left', 'right', 'forward', None)
-                for left in ('left', 'right', 'forward', None)
-                for waypt in ('left', 'right', 'forward') ]
+                for oncoming in ('forward','left', 'right', None)
+                for left in ('forward','left', 'right', None)
+                for waypt in ('forward','left', 'right') ]
         self.Q = { (state, action) : 0
                 for state in self.states
                 for action in self.env.valid_actions }
-        self.policy = { state : 'left'
+        self.policy = { state : 'forward'
                 for state in self.states }
         self.gamma = 0.9
-        self.alpha = 0.25
+        self.alpha = 0.1
         self.policy_needs_updated = False
 
     def __update_Q__(self):
-        Q_prime = max([self.Q[self.state, ax]
-                        for ax in ('left', 'right', 'forward', None)])
+        # Determine the highest attainable Q-value for the current state
+        Q_prime = max([self.Q[self.state, a]
+                        for a in ('forward','left', 'right', None)])
+        # Update the Q-value for the previous state and action
         self.Q[self.previous_state, self.action] = (
                     (1 - self.alpha) * self.Q[self.previous_state, self.action]
                     + self.alpha * (self.reward + self.gamma * Q_prime)
                     )
 
     def __update_policy__(self):
-        #self.alpha = 1/(1./self.alpha + 0.1)
         self.__update_Q__()
         self.policy[self.previous_state] = max(
-                                [(ax, self.Q[self.previous_state, ax])
-                                for ax in ('left', 'right', 'forward', None)],
+                                [(a, self.Q[self.previous_state, a])
+                                for a in ('forward','left', 'right', None)],
                                 key= lambda x: x[1]
                                 )[0]
 
@@ -100,15 +103,37 @@ class QLearningAgent(StochasticAgent):
         deadline = self.env.get_deadline(self)
         self.state = (inputs['light'], inputs['oncoming'], inputs['left'],
                         self.next_waypoint)
+        # Update the policy for the last round's state and action
         if self.policy_needs_updated:
             self.__update_policy__()
-        self.action = self.__choose_action__()
         # Execute action and get reward
+        self.action = self.__choose_action__()
         self.reward = self.env.act(self, self.action)
-        # Learn policy based on state, action, reward
         self.previous_state = self.state
         self.policy_needs_updated = True
         print "LearningAgent.update():deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, self.action, self.reward)  # [debug]
+
+#==============================================================================
+
+class TrueLearningAgent(QLearningAgent):
+    """
+    An agent that does an admirable job of learning what actions are best under
+    various circumstances. This is done by introducing a penalty factor applied
+    to each Q-Learning iteration, that gives most actions an effective negative
+    reward. Satisfies the fourth part of the assignment.
+    """
+
+    def __init__(self, env):
+        super(TrueLearningAgent, self).__init__(env)  # sets self.env = env, state = None, next_waypoint = None, and a default color
+
+    def __update_Q__(self):
+        p = penalty = 1.25
+        Q_prime = max([self.Q[self.state, ax]
+                        for ax in ('forward','left', 'right', None)])
+        self.Q[self.previous_state, self.action] = (
+                    (1 - self.alpha) * self.Q[self.previous_state, self.action]
+                    + self.alpha * (self.reward - p + self.gamma * Q_prime)
+                    )
 
 #==============================================================================
 
@@ -126,6 +151,7 @@ def run(agent, enforce, delay):
 
 
 if __name__ == '__main__':
-    run(StochasticAgent, enforce=False, delay=1)
-    run(DimAwarenessAgent, enforce=False, delay=1)
-    run(QLearningAgent, enforce=True, delay=1)
+    run(StochasticAgent, enforce=False, delay=0.5)
+    run(DimAwarenessAgent, enforce=False, delay=0.5)
+    run(QLearningAgent, enforce=True, delay=0.5)
+    run(TrueLearningAgent, enforce=True, delay=0.5)
