@@ -26,7 +26,7 @@ class StochasticAgent(Agent):
         inputs = self.env.sense(self)
         deadline = self.env.get_deadline(self)
         # Execute random action and get reward
-        action = self.env.valid_actions[random.randrange(4)]
+        action = ('forward','left', 'right', None)[random.randrange(4)]
         reward = self.env.act(self, action)
         print "LearningAgent.update():deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
